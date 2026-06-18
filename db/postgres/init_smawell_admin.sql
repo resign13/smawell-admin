@@ -278,7 +278,7 @@ JOIN (
     ('atelier-linen-shirt-dress', 'zh', 'Atelier Linen Shirt Dress', 'Premium resort-style linen dress for boutique fashion programs.', 'Fluid drape and easy silhouette with customization support for fabric, trims and labels.'),
     ('atelier-linen-shirt-dress', 'en', 'Atelier Linen Shirt Dress', 'Premium resort-style linen dress for boutique fashion programs.', 'Fluid drape and easy silhouette with customization support for fabric, trims and labels.'),
     ('signature-oxford-shirt', 'zh', 'Signature Oxford Shirt', 'Classic shirt program for menswear brands and uniform buyers.', 'High-density cotton yarn with customizable labels, embroidery and packaging.'),
-    ('signature-oxford-shirt', 'en', 'Signature Oxford Shirt', 'Classic shirt program for menswear brands and uniform buyers.', 'High-density cotton yarn with customizable labels, embroidery and packaging.'),
+    ('signature-oxford-shirt', 'en', 'Signature Oxford Shirt', 'Classic shirt program for menswear brands and uniform buyers.', 'High-density cotton yarn with customizable labels, embroidery and packaging.')
 ) AS v(slug, lang_code, name, summary, description)
   ON v.slug = p.slug
 ON CONFLICT (product_id, lang_code) DO NOTHING;
@@ -354,7 +354,7 @@ JOIN (
     ('https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1600&q=80', 'zh', '2026 鏄ュ鏈嶈涓绘帹绯诲垪', '鑱氱劍濂宠銆佺敺瑁呬笌瑁よ澶ц揣娆惧紡锛屽簱瀛樺疄鏃跺彲鏌ャ€?, '杩涘叆鍟嗗煄'),
     ('https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1600&q=80', 'en', 'Spring Summer 2026 Apparel Highlights', 'Focus on dresses, shirts and pants with live stock visibility.', 'Shop Now'),
     ('https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=1600&q=80', 'zh', '瑁よ涓庣墰浠旂郴鍒楁寔缁ˉ璐?, '鏀寔瀹㈡埛鍦ㄧ嚎涓嬪崟锛岃鍗曡嚜鍔ㄨ繘鍏ュ悗鍙扮鐞嗙銆?, '鏌ョ湅搴撳瓨'),
-    ('https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=1600&q=80', 'en', 'Pants and Denim Restock Program', 'Customers can place orders online and sync them to the admin panel.', 'Check Inventory'),
+    ('https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=1600&q=80', 'en', 'Pants and Denim Restock Program', 'Customers can place orders online and sync them to the admin panel.', 'Check Inventory')
 ) AS v(image_url, lang_code, title, subtitle, cta_label)
   ON v.image_url = b.image_url
 ON CONFLICT (banner_id, lang_code) DO NOTHING;
