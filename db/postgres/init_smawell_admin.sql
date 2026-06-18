@@ -222,16 +222,16 @@ SELECT pc.id, v.lang_code, v.label
 FROM product_categories pc
 JOIN (
   VALUES
-    ('womenswear', 'zh', '濂宠'),
+    ('womenswear', 'zh', '??'),
     ('womenswear', 'en', 'Womenswear'),
-    ('menswear', 'zh', '鐢疯'),
+    ('menswear', 'zh', '??'),
     ('menswear', 'en', 'Menswear'),
-    ('pants', 'zh', '瑁よ'),
+    ('pants', 'zh', '??'),
     ('pants', 'en', 'Pants'),
-    ('denim', 'zh', '鐗涗粩'),
+    ('denim', 'zh', '??'),
     ('denim', 'en', 'Denim'),
-    ('outerwear', 'zh', '澶栧'),
-    ('outerwear', 'en', 'Outerwear'),
+    ('outerwear', 'zh', '??'),
+    ('outerwear', 'en', 'Outerwear')
 ) AS v(category_key, lang_code, label)
   ON v.category_key = pc.category_key
 ON CONFLICT (category_id, lang_code) DO NOTHING;
