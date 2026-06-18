@@ -32,6 +32,11 @@ from psycopg.errors import ForeignKeyViolation
 from werkzeug.utils import secure_filename
 from werkzeug.security import check_password_hash, generate_password_hash
 
+try:
+    import boto3
+except Exception:  # noqa: BLE001
+    boto3 = None
+
 from db import (
     category_key_exists,
     count_active_admin_users,
@@ -1144,6 +1149,10 @@ CLOUDINARY_CLOUD_NAME = os.environ.get("CLOUDINARY_CLOUD_NAME", "").strip()
 CLOUDINARY_API_KEY = os.environ.get("CLOUDINARY_API_KEY", "").strip()
 CLOUDINARY_API_SECRET = os.environ.get("CLOUDINARY_API_SECRET", "").strip()
 CLOUDINARY_FOLDER = os.environ.get("CLOUDINARY_UPLOAD_FOLDER", "smawell").strip() or "smawell"
+R2_ACCOUNT_ID = os.environ.get("R2_ACCOUNT_ID", "").strip()
+R2_ACCESS_KEY_ID = os.environ.get("R2_ACCESS_KEY_ID", "").strip()
+R2_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY", "").strip()
+R2_BUCKET = os.environ.get("R2_BUCKET", "").strip()
 
 
 def utc_now() -> str:
@@ -1494,6 +1503,16 @@ def cloudinary_enabled() -> bool:
     return bool(CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET)
 
 
+def r2_enabled() -> bool:
+    return bool(
+        boto3
+        and R2_ACCOUNT_ID
+        and R2_ACCESS_KEY_ID
+        and R2_SECRET_ACCESS_KEY
+        and R2_BUCKET
+    )
+
+
 def build_multipart_form_data(fields: dict[str, str], file_name: str, file_bytes: bytes, content_type: str) -> tuple[bytes, str]:
     boundary = f"----CloudinaryBoundary{secrets.token_hex(12)}"
     body = bytearray()
@@ -1568,6 +1587,35 @@ def upload_file_to_cloudinary(file_storage: Any) -> str:
     return secure_url
 
 
+def upload_file_to_r2(file_storage: Any) -> str:
+    if not r2_enabled():
+        raise RuntimeError("R2 is not configured")
+
+    file_name = secure_filename(file_storage.filename or "") or f"upload-{secrets.token_hex(4)}.jpg"
+    suffix = Path(file_name).suffix.lower() or ".jpg"
+    content_type = file_storage.mimetype or mimetypes.guess_type(file_name)[0] or "application/octet-stream"
+    file_bytes = file_storage.read()
+    file_storage.stream.seek(0)
+    if not file_bytes:
+        raise ValueError("Empty file")
+
+    key = f"admin/{datetime.now(UTC):%Y/%m/%d}/{secrets.token_hex(12)}{suffix}"
+    client = boto3.client(
+        "s3",
+        endpoint_url=f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
+        aws_access_key_id=R2_ACCESS_KEY_ID,
+        aws_secret_access_key=R2_SECRET_ACCESS_KEY,
+        region_name="auto",
+    )
+    client.put_object(
+        Bucket=R2_BUCKET,
+        Key=key,
+        Body=file_bytes,
+        ContentType=content_type,
+    )
+    return build_upload_url(key)
+
+
 def save_file_locally(file_storage: Any) -> str:
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     stem = secure_filename(Path(file_storage.filename or "").stem) or "upload"
@@ -1583,7 +1631,25 @@ def admin_frontend_ready() -> bool:
 
 @app.get("/uploads/<path:filename>")
 def serve_upload(filename: str) -> Any:
-    return send_from_directory(UPLOAD_DIR, filename)
+    local_file = UPLOAD_DIR / filename
+    if local_file.exists() and local_file.is_file():
+        return send_from_directory(UPLOAD_DIR, filename)
+    if r2_enabled():
+        client = boto3.client(
+            "s3",
+            endpoint_url=f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
+            aws_access_key_id=R2_ACCESS_KEY_ID,
+            aws_secret_access_key=R2_SECRET_ACCESS_KEY,
+            region_name="auto",
+        )
+        try:
+            obj = client.get_object(Bucket=R2_BUCKET, Key=filename)
+        except Exception:  # noqa: BLE001
+            return jsonify({"message": "Not found"}), 404
+        content = obj["Body"].read()
+        content_type = obj.get("ContentType") or mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        return send_file(BytesIO(content), mimetype=content_type, download_name=Path(filename).name)
+    return jsonify({"message": "Not found"}), 404
 
 
 @app.post("/api/admin/uploads")
@@ -1597,7 +1663,7 @@ def upload_files() -> Any:
     if not valid_files:
         return jsonify({"message": "Missing files"}), 400
 
-    uploader = upload_file_to_cloudinary if cloudinary_enabled() else save_file_locally
+    uploader = upload_file_to_r2 if r2_enabled() else upload_file_to_cloudinary if cloudinary_enabled() else save_file_locally
     if len(valid_files) == 1:
         urls = [uploader(valid_files[0])]
     else:
