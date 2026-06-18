@@ -96,6 +96,7 @@ from db import (
 app = Flask(__name__)
 CORS(app)
 UPLOAD_DIR = BASE_DIR / "uploads"
+UPLOAD_PUBLIC_BASE_URL = os.environ.get("UPLOAD_PUBLIC_BASE_URL", "").strip().rstrip("/")
 ADMIN_FRONTEND_DIST = BASE_DIR.parent / "frontend" / "dist"
 mimetypes.add_type("image/webp", ".webp")
 
@@ -1496,6 +1497,8 @@ def build_homepage_payload(lang: str) -> dict[str, Any]:
 
 
 def build_upload_url(filename: str) -> str:
+    if UPLOAD_PUBLIC_BASE_URL:
+        return f"{UPLOAD_PUBLIC_BASE_URL}/{filename}"
     return f"{request.host_url.rstrip('/')}/uploads/{filename}"
 
 
