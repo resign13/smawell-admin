@@ -59,6 +59,10 @@ CREATE TABLE IF NOT EXISTS products (
   category_id BIGINT NOT NULL REFERENCES product_categories(id),
   slug VARCHAR(160) NOT NULL UNIQUE,
   sku VARCHAR(80) NOT NULL UNIQUE,
+  product_code VARCHAR(120) NOT NULL DEFAULT '',
+  color_group VARCHAR(120) NOT NULL DEFAULT '',
+  color_name VARCHAR(120) NOT NULL DEFAULT '',
+  color_hex VARCHAR(32) NOT NULL DEFAULT '',
   price NUMERIC(12, 2) NOT NULL CHECK (price >= 0),
   stock INTEGER NOT NULL DEFAULT 0 CHECK (stock >= 0),
   featured BOOLEAN NOT NULL DEFAULT FALSE,
@@ -76,6 +80,12 @@ CREATE INDEX IF NOT EXISTS idx_products_category_id
 
 CREATE INDEX IF NOT EXISTS idx_products_featured
   ON products (featured);
+
+CREATE INDEX IF NOT EXISTS idx_products_product_code
+  ON products (product_code);
+
+CREATE INDEX IF NOT EXISTS idx_products_color_group
+  ON products (color_group);
 
 CREATE TABLE IF NOT EXISTS product_translations (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -222,25 +232,29 @@ SELECT pc.id, v.lang_code, v.label
 FROM product_categories pc
 JOIN (
   VALUES
-    ('womenswear', 'zh', '??'),
+    ('womenswear', 'zh', 'Womenswear'),
     ('womenswear', 'en', 'Womenswear'),
-    ('menswear', 'zh', '??'),
+    ('menswear', 'zh', 'Menswear'),
     ('menswear', 'en', 'Menswear'),
-    ('pants', 'zh', '??'),
+    ('pants', 'zh', 'Pants'),
     ('pants', 'en', 'Pants'),
-    ('denim', 'zh', '??'),
+    ('denim', 'zh', 'Denim'),
     ('denim', 'en', 'Denim'),
-    ('outerwear', 'zh', '??'),
+    ('outerwear', 'zh', 'Outerwear'),
     ('outerwear', 'en', 'Outerwear')
 ) AS v(category_key, lang_code, label)
   ON v.category_key = pc.category_key
 ON CONFLICT (category_id, lang_code) DO NOTHING;
 
-INSERT INTO products (category_id, slug, sku, price, stock, featured, origin, main_image_url, is_active, created_at, updated_at)
+INSERT INTO products (category_id, slug, sku, product_code, color_group, color_name, color_hex, price, stock, featured, origin, main_image_url, is_active, created_at, updated_at)
 SELECT
   pc.id,
   'atelier-linen-shirt-dress',
   'LA-DR-001',
+  'LA-DR-001',
+  'LA-DR-001',
+  'Default',
+  '#999999',
   34.00,
   320,
   TRUE,
@@ -253,11 +267,15 @@ FROM product_categories pc
 WHERE pc.category_key = 'womenswear'
   AND NOT EXISTS (SELECT 1 FROM products WHERE slug = 'atelier-linen-shirt-dress');
 
-INSERT INTO products (category_id, slug, sku, price, stock, featured, origin, main_image_url, is_active, created_at, updated_at)
+INSERT INTO products (category_id, slug, sku, product_code, color_group, color_name, color_hex, price, stock, featured, origin, main_image_url, is_active, created_at, updated_at)
 SELECT
   pc.id,
   'signature-oxford-shirt',
   'LA-MS-008',
+  'LA-MS-008',
+  'LA-MS-008',
+  'Default',
+  '#999999',
   21.00,
   540,
   TRUE,

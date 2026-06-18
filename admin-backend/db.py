@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import os
@@ -17,7 +17,7 @@ from psycopg.sql import Identifier, SQL
 BASE_DIR = Path(__file__).resolve().parent
 REPO_DIR = BASE_DIR.parent
 SCHEMA_SQL_FILE = REPO_DIR / "db" / "postgres" / "init_smawell_admin.sql"
-DEFAULT_LANG = "zh"
+DEFAULT_LANG = "en"
 SUPPORTED_LANGS = ("zh", "en")
 HOME_SECTION_KEYS = ("bestSeller", "newArrival", "specialPrice")
 ORDER_STATUSES = ("pending_payment", "paid", "shipped", "completed", "cancelled")
@@ -155,6 +155,13 @@ def _apply_schema_migrations(cur: Any) -> None:
     cur.execute("ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS role VARCHAR(32) NOT NULL DEFAULT 'admin'")
     cur.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS size_chart_image_url TEXT")
     cur.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS description_image_url TEXT")
+    cur.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS product_code VARCHAR(120) NOT NULL DEFAULT ''")
+    cur.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS color_group VARCHAR(120) NOT NULL DEFAULT ''")
+    cur.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS color_name VARCHAR(120) NOT NULL DEFAULT ''")
+    cur.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS color_hex VARCHAR(32) NOT NULL DEFAULT ''")
+    cur.execute("UPDATE products SET product_code = COALESCE(NULLIF(product_code, ''), sku), color_group = COALESCE(NULLIF(color_group, ''), sku), color_name = COALESCE(NULLIF(color_name, ''), 'Default'), color_hex = COALESCE(NULLIF(color_hex, ''), '#999999')")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_products_product_code ON products(product_code)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_products_color_group ON products(color_group)")
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS product_size_prices (
