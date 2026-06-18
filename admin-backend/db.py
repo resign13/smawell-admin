@@ -159,6 +159,7 @@ def _apply_schema_migrations(cur: Any) -> None:
     cur.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS color_group VARCHAR(120) NOT NULL DEFAULT ''")
     cur.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS color_name VARCHAR(120) NOT NULL DEFAULT ''")
     cur.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS color_hex VARCHAR(32) NOT NULL DEFAULT ''")
+    cur.execute("ALTER TABLE product_categories ADD COLUMN IF NOT EXISTS image_url TEXT")
     cur.execute("UPDATE products SET product_code = COALESCE(NULLIF(product_code, ''), sku), color_group = COALESCE(NULLIF(color_group, ''), sku), color_name = COALESCE(NULLIF(color_name, ''), 'Default'), color_hex = COALESCE(NULLIF(color_hex, ''), '#999999')")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_products_product_code ON products(product_code)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_products_color_group ON products(color_group)")
@@ -1407,6 +1408,7 @@ def _build_category_result(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "key": row["category_key"],
             "label": labels[int(row["id"])].get(DEFAULT_LANG, ""),
             "labels": labels[int(row["id"])],
+            "imageUrl": row.get("image_url") or "",
             "sortOrder": int(row["sort_order"]),
             "isActive": bool(row["is_active"]),
             "productCount": product_counts[int(row["id"])],
@@ -1418,7 +1420,7 @@ def _build_category_result(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def list_categories(*, include_inactive: bool = False) -> list[dict[str, Any]]:
     query = """
-        SELECT id, category_key, sort_order, is_active, created_at
+        SELECT id, category_key, sort_order, image_url, is_active, created_at
         FROM product_categories
     """
     params: tuple[Any, ...] = ()
@@ -1431,7 +1433,7 @@ def list_categories(*, include_inactive: bool = False) -> list[dict[str, Any]]:
 def get_category_by_id(category_id: int) -> dict[str, Any] | None:
     rows = _fetch_all(
         """
-        SELECT id, category_key, sort_order, is_active, created_at
+        SELECT id, category_key, sort_order, image_url, is_active, created_at
         FROM product_categories
         WHERE id = %s
         """,
@@ -1464,6 +1466,7 @@ def _normalize_category_payload(payload: dict[str, Any]) -> dict[str, Any]:
     return {
         "key": category_key,
         "labels": normalized_labels,
+        "imageUrl": str(payload.get("imageUrl") or payload.get("image") or "").strip(),
         "sortOrder": sort_order,
     }
 
@@ -1486,11 +1489,11 @@ def create_category(payload: dict[str, Any]) -> dict[str, Any]:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO product_categories (category_key, sort_order, is_active, created_at)
-                VALUES (%s, %s, TRUE, NOW())
+                INSERT INTO product_categories (category_key, sort_order, image_url, is_active, created_at)
+                VALUES (%s, %s, %s, TRUE, NOW())
                 RETURNING id
                 """,
-                (normalized["key"], normalized["sortOrder"]),
+                (normalized["key"], normalized["sortOrder"], normalized["imageUrl"]),
             )
             category_id = int(cur.fetchone()["id"])
             _write_category_translations(cur, category_id, normalized["labels"])
@@ -1510,10 +1513,11 @@ def update_category(category_id: int, payload: dict[str, Any]) -> dict[str, Any]
                 UPDATE product_categories
                 SET category_key = %s,
                     sort_order = %s,
+                    image_url = %s,
                     is_active = TRUE
                 WHERE id = %s
                 """,
-                (normalized["key"], normalized["sortOrder"], category_id),
+                (normalized["key"], normalized["sortOrder"], normalized["imageUrl"], category_id),
             )
             _write_category_translations(cur, category_id, normalized["labels"])
         conn.commit()
@@ -1547,7 +1551,7 @@ def delete_category(category_id: int) -> bool:
 def list_category_labels(lang: str) -> list[dict[str, str]]:
     rows = _fetch_all(
         """
-        SELECT pc.category_key, pct.label
+        SELECT pc.category_key, pct.label, pc.image_url
         FROM product_categories pc
         JOIN product_category_translations pct
           ON pct.category_id = pc.id AND pct.lang_code = %s
@@ -1556,7 +1560,7 @@ def list_category_labels(lang: str) -> list[dict[str, str]]:
         """,
         (lang,),
     )
-    return [{"key": row["category_key"], "label": row["label"]} for row in rows]
+    return [{"key": row["category_key"], "label": row["label"], "imageUrl": row.get("image_url") or ""} for row in rows]
 
 
 def _build_user_dict(row: dict[str, Any], *, include_password_hash: bool, company_name: bool) -> dict[str, Any]:
